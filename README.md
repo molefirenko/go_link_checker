@@ -14,9 +14,9 @@ Example of the boby
 ```
 {
     "Links": [
-        "http://www.golang.org/",
-        "http://www.google.com/",
-        "http://www.somestupidname.com/"
+        "golang.org",
+        "google.com",
+        "facebook.com"
     ]
 }
 ```
