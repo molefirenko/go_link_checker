@@ -5,13 +5,14 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/likexian/whois"
+	whoisparser "github.com/likexian/whois-parser"
 )
 
-type link_status struct {
-	Link         string
-	Error        bool
-	StatusCode   int
-	StatusString string
+type TlinkStatus struct {
+	Link   string
+	Error  bool
+	Status whoisparser.WhoisInfo
 }
 
 func ProcessLinks(context *gin.Context) {
@@ -20,7 +21,7 @@ func ProcessLinks(context *gin.Context) {
 		Links []string
 	}
 
-	var results []link_status
+	var results []TlinkStatus
 
 	var wg sync.WaitGroup
 
@@ -50,27 +51,35 @@ func ProcessLinks(context *gin.Context) {
 	})
 }
 
-func get_link_status(link string) link_status {
-	var response link_status
+func get_link_status(link string) TlinkStatus {
+	var response TlinkStatus
+	var resultParseError bool
 
-	resp, err := http.Get(link)
+	result, err := whois.Whois(link)
 
 	if err != nil {
-		response = link_status{
-			Link:         link,
-			Error:        true,
-			StatusCode:   0,
-			StatusString: err.Error(),
+		domain := whoisparser.WhoisInfo{}
+		response = TlinkStatus{
+			Link:   link,
+			Error:  true,
+			Status: domain,
 		}
 
 		return response
 	}
 
-	response = link_status{
-		Link:         link,
-		Error:        false,
-		StatusCode:   resp.StatusCode,
-		StatusString: http.StatusText(resp.StatusCode),
+	parsedResult, err := whoisparser.Parse(result)
+
+	if err != nil {
+		resultParseError = true
+	} else {
+		resultParseError = false
+	}
+
+	response = TlinkStatus{
+		Link:   link,
+		Error:  resultParseError,
+		Status: parsedResult,
 	}
 
 	return response
