@@ -1,8 +1,11 @@
 package controllers
 
 import (
+	"crypto/tls"
+	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/likexian/whois"
@@ -10,9 +13,10 @@ import (
 )
 
 type TlinkStatus struct {
-	Link   string
-	Error  bool
-	Status whoisparser.WhoisInfo
+	Link      string
+	Error     bool
+	Status    whoisparser.WhoisInfo
+	SSLStatus string
 }
 
 func ProcessLinks(context *gin.Context) {
@@ -60,9 +64,10 @@ func get_link_status(link string) TlinkStatus {
 	if err != nil {
 		domain := whoisparser.WhoisInfo{}
 		response = TlinkStatus{
-			Link:   link,
-			Error:  true,
-			Status: domain,
+			Link:      link,
+			Error:     true,
+			Status:    domain,
+			SSLStatus: "",
 		}
 
 		return response
@@ -77,10 +82,26 @@ func get_link_status(link string) TlinkStatus {
 	}
 
 	response = TlinkStatus{
-		Link:   link,
-		Error:  resultParseError,
-		Status: parsedResult,
+		Link:      link,
+		Error:     resultParseError,
+		Status:    parsedResult,
+		SSLStatus: checkSSLsertificate(link),
 	}
 
 	return response
+}
+
+func checkSSLsertificate(domain string) string {
+	conn, err := tls.Dial("tcp", domain+":443", nil)
+	if err != nil {
+		return "Server doesn't support SSL certificate err: " + err.Error()
+	}
+
+	err = conn.VerifyHostname(domain)
+	if err != nil {
+		return "Hostname doesn't match with certificate: " + err.Error()
+	}
+	expiry := conn.ConnectionState().PeerCertificates[0].NotAfter
+
+	return fmt.Sprintf("Expiry: %v", expiry.Format(time.RFC850))
 }
